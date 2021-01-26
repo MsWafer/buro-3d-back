@@ -5,4 +5,4 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 7770
-CMD [ "npm", "run", "prodstart" ]
+CMD [ "node", "index.js" ]
