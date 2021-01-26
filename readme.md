@@ -1,0 +1,1 @@
+**POST /upload** - нужен crypt проекта и sprintId спринта в бади + file 
