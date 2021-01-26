@@ -8,3 +8,18 @@ services:
       - '7770:7770'
     depends_on:
       - 'mongo'
+  mongo:
+    container_name: mongo_platform
+    restart: always
+    image: mongo:4.1.8-xenial
+    command: mongod --auth --config /data/configdb/mongodb.conf
+    ports: 
+     - '27018:27018'
+    volumes:
+     - mongo-config:/data/configdb
+     - mongoData:/data/db            
+volumes:
+  mongo-config:
+  mongoData:
+    external:
+      name: mongo_external
