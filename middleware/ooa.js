@@ -1,7 +1,7 @@
 var Axios = require("axios");
 const querystring = require("querystring");
 
-module.exports = (
+module.exports = async (
   FORGE_CLIENT_ID,
   FORGE_CLIENT_SECRET,
   scopes
