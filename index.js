@@ -99,3 +99,39 @@ app.post("/upload", upload.single("file"), async (req, res) => {
       });
   });
 });
+
+//post file
+app.post("/uploadprj", upload.single("file"), async (req, res) => {
+  await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
+  fs.readFile(req.file.path, async (err, filecontent) => {
+    Axios({
+      method: "PUT",
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      url:
+        "https://developer.api.autodesk.com/oss/v2/buckets/" +
+        encodeURIComponent(bucketKey) +
+        "/objects/" +
+        encodeURIComponent(req.file.originalname),
+      headers: {
+        Authorization: "Bearer " + process.env.access_token,
+        "Content-Disposition": req.file.originalname,
+        "Content-Length": filecontent.length,
+      },
+      data: filecontent,
+    })
+      .then(async (response) => {
+        console.log(response);
+        var urn = response.data.objectId.toBase64();
+        await Project.findOneAndUpdate(
+          { crypt: req.body.crypt },
+          { $set: { urn: urn } }
+        );
+        res.json({ msg: "Файл загружен" });
+      })
+      .catch(function (error) {
+        console.log(error);
+        res.send("Failed to create a new object in the bucket");
+      });
+  });
+});
