@@ -137,7 +137,7 @@ app.post("/uploadprj", upload.single("file"), async (req, res) => {
 });
 
 //token govna ebuchiy s urnoy i govnom proekta
-router.get('/tokengovna/:crypt', async(req,res)=>{
+app.get('/tokengovna/:crypt', async(req,res)=>{
   await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
   let project = await Project.findOne({crypt:req.params.crypt})
   if(!project){return res.status(404).json({err:"Проект не найден"})}
@@ -147,7 +147,7 @@ msg:'токен высрался'})
 })
 
 //token govna ebuchiy s urnoy i govnom sprinta
-router.get('/tokengovna/:id', async(req,res)=>{
+app.get('/tokengovna/:id', async(req,res)=>{
   await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
   let sprint = await Sprint.findOne({_id:req.params.id})
   if(!sprint){return res.status(404).json({err:"Спринт не найден"})}
