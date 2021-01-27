@@ -7,9 +7,7 @@ var multer = require("multer");
 var upload = multer({
   dest: "/usr/src/app/tmp",
   fileFilter: (req, file, cb) => {
-    if (
-      file.mimetype == "application/octet-stream"
-    ) {
+    if (file.mimetype == "application/octet-stream") {
       cb(null, true);
     } else {
       cb(null, false);
@@ -137,21 +135,39 @@ app.post("/uploadprj", upload.single("file"), async (req, res) => {
 });
 
 //token govna ebuchiy s urnoy i govnom proekta
-app.get('/tokengovna/:crypt', async(req,res)=>{
-  await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
-  let project = await Project.findOne({crypt:req.params.crypt})
-  if(!project){return res.status(404).json({err:"Проект не найден"})}
-  return res.json({urn:project.urn,
-  token:process.env.access_token,
-msg:'токен высрался'})
-})
+app.get("/tokengovna/:crypt", async (req, res) => {
+  try {
+    await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
+    let project = await Project.findOne({ crypt: req.params.crypt });
+    if (!project) {
+      return res.status(404).json({ err: "Проект не найден" });
+    }
+    return res.json({
+      urn: project.urn,
+      token: process.env.access_token,
+      msg: "токен высрался",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "server error" });
+  }
+});
 
 //token govna ebuchiy s urnoy i govnom sprinta
-app.get('/tokengovnas/:id', async(req,res)=>{
-  await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
-  let sprint = await Sprint.findOne({_id:req.params.id})
-  if(!sprint){return res.status(404).json({err:"Спринт не найден"})}
-  return res.json({urn:sprint.urn,
-  token:process.env.access_token,
-msg:'токен высрался'})
-})
+app.get("/tokengovnas/:id", async (req, res) => {
+  try {
+    await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
+    let sprint = await Sprint.findOne({ _id: req.params.id });
+    if (!sprint) {
+      return res.status(404).json({ err: "Спринт не найден" });
+    }
+    return res.json({
+      urn: sprint.urn,
+      token: process.env.access_token,
+      msg: "токен высрался",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "server error" });
+  }
+});
