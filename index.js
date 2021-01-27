@@ -147,7 +147,7 @@ msg:'токен высрался'})
 })
 
 //token govna ebuchiy s urnoy i govnom sprinta
-app.get('/tokengovna/:id', async(req,res)=>{
+app.get('/tokengovnas/:id', async(req,res)=>{
   await ooa(FORGE_CLIENT_ID, FORGE_CLIENT_SECRET, scopes);
   let sprint = await Sprint.findOne({_id:req.params.id})
   if(!sprint){return res.status(404).json({err:"Спринт не найден"})}
