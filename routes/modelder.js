@@ -46,25 +46,41 @@ var oAuth2TwoLegged = new ForgeSDK.AuthClientTwoLegged(
 );
 
 //get token+prj
-router.get("/tkn/p", async (req, res) => {
-  let prj = await Project.findOne({ crypt: req.body.crypt });
-  oAuth2TwoLegged.authenticate().then((response) => {
-    return res.json({
-      token: response.access_token,
-      urn: prj.urn,
+router.get("/tkn/p/:crypt", async (req, res) => {
+  try {
+    let prj = await Project.findOne({ crypt: req.params.crypt });
+    if (!prj) {
+      return res.status(404).json({ err: "Проект не найден" });
+    }
+    oAuth2TwoLegged.authenticate().then((response) => {
+      return res.json({
+        token: response.access_token,
+        urn: prj.urn,
+      });
     });
-  });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "server error" });
+  }
 });
 
 //get token+spr
-router.get("/tkn/p", async (req, res) => {
-  let spr = await Sprint.findOne({ _id: req.body.id });
-  oAuth2TwoLegged.authenticate().then((response) => {
-    return res.json({
-      token: response.access_token,
-      urn: spr.urn,
+router.get("/tkn/s/:id", async (req, res) => {
+  try {
+    let spr = await Sprint.findOne({ _id: req.body.id });
+    if (!spr) {
+      return res.status(404).json({ err: "Спринт не найден" });
+    }
+    oAuth2TwoLegged.authenticate().then((response) => {
+      return res.json({
+        token: response.access_token,
+        urn: spr.urn,
+      });
     });
-  });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "server error" });
+  }
 });
 
 //post file to project
