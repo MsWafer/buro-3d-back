@@ -1,2 +1,4 @@
-**POST /upload** - нужен crypt проекта и sprintId спринта в бади + file 
-**POST /uploadprj** - нужен crypt проекта в бади + file 
+**POST /up/upload/p** - нужен crypt проекта и sprintId спринта в бади + file 
+**POST /up/upload/p** - нужен crypt проекта в бади + file 
+**GET /up/status/p** - показывает статус транслейта урны проекта, требует *crypt* проекта в бади
+**GET /up/status/p** - показывает статус транслейта урны спринта, требует *id* спринта в бади
