@@ -45,6 +45,28 @@ var oAuth2TwoLegged = new ForgeSDK.AuthClientTwoLegged(
   true
 );
 
+//get token+prj
+router.get("/tkn/p", async (req, res) => {
+  let prj = await Project.findOne({ crypt: req.body.crypt });
+  oAuth2TwoLegged.authenticate().then((response) => {
+    return res.json({
+      token: response.access_token,
+      urn: prj.urn,
+    });
+  });
+});
+
+//get token+spr
+router.get("/tkn/p", async (req, res) => {
+  let spr = await Sprint.findOne({ _id: req.body.id });
+  oAuth2TwoLegged.authenticate().then((response) => {
+    return res.json({
+      token: response.access_token,
+      urn: spr.urn,
+    });
+  });
+});
+
 //post file to project
 router.post("/upload/p", upload.single("file"), async (req, res) => {
   let urn;
@@ -125,89 +147,88 @@ router.get("/status/p", async (req, res) => {
   );
 });
 
-
 //post file to sprint
 router.post("/upload/s", upload.single("file"), async (req, res) => {
-    let urn;
-    fs.readFile(req.file.path, async (err, data) => {
-        res.json()
-      objectsApi
-        .uploadObject(
-          BUCKET_KEY,
-          req.file.originalname,
-          data.length,
-          data,
-          {},
-          oAuth2TwoLegged,
-          await oAuth2TwoLegged.authenticate()
-        )
-        .then(async (response) => {
-          console.log(response);
-          urn = response.body.objectId.toBase64();
-          await Project.findOneAndUpdate(
-            { crypt: req.body.crypt },
-            { $set: { urn: urn } }
-          );
-          await Sprint.findOneAndUpdate(
-            { _id: req.body.id },
-            { $set: { urn: urn } }
-          );
-          res.json({ msg: "Файл загружен, переводим....." });
-          (async () => {
-            ManifestApi.translate(
-              {
-                input: {
-                  urn: urn,
-                },
-                output: {
-                  formats: [
-                    {
-                      type: "svf",
-                      views: ["2d", "3d"],
-                    },
-                  ],
-                },
+  let urn;
+  fs.readFile(req.file.path, async (err, data) => {
+    res.json();
+    objectsApi
+      .uploadObject(
+        BUCKET_KEY,
+        req.file.originalname,
+        data.length,
+        data,
+        {},
+        oAuth2TwoLegged,
+        await oAuth2TwoLegged.authenticate()
+      )
+      .then(async (response) => {
+        console.log(response);
+        urn = response.body.objectId.toBase64();
+        await Project.findOneAndUpdate(
+          { crypt: req.body.crypt },
+          { $set: { urn: urn } }
+        );
+        await Sprint.findOneAndUpdate(
+          { _id: req.body.id },
+          { $set: { urn: urn } }
+        );
+        res.json({ msg: "Файл загружен, переводим....." });
+        (async () => {
+          ManifestApi.translate(
+            {
+              input: {
+                urn: urn,
               },
-              {},
-              oAuth2TwoLegged,
-              await oAuth2TwoLegged.authenticate()
-            ).then(
-              (results) => {
-                console.log(results.body);
+              output: {
+                formats: [
+                  {
+                    type: "svf",
+                    views: ["2d", "3d"],
+                  },
+                ],
               },
-              function (err) {
-                console.error(err);
-              }
-            );
-          })();
-        })
-        .catch((error) => {
-          console.log(error);
-          return res.json({ msg: "НЕ ПОЛУЧИЛОСЬ" });
-        });
-    });
+            },
+            {},
+            oAuth2TwoLegged,
+            await oAuth2TwoLegged.authenticate()
+          ).then(
+            (results) => {
+              console.log(results.body);
+            },
+            function (err) {
+              console.error(err);
+            }
+          );
+        })();
+      })
+      .catch((error) => {
+        console.log(error);
+        return res.json({ msg: "НЕ ПОЛУЧИЛОСЬ" });
+      });
   });
-  
-  //check manifest status spr
-  router.get("/status/s", async (req, res) => {
-    let sprint = await Sprint.findOne({ _id: req.body.id });
-    ManifestApi.getManifest(
-      sprint.urn,
-      {},
-      oAuth2TwoLegged,
-      await oAuth2TwoLegged.authenticate()
-    ).then(
-      (buckets) => {
-        console.log(buckets.body);
-        return res.json({
-          status: buckets.body.status,
-          progress: buckets.body.progress,
-        });
-      },
-      function (err) {
-        console.error(err);
-      }
-    );
-  });
+});
+
+//check manifest status spr
+router.get("/status/s", async (req, res) => {
+  let sprint = await Sprint.findOne({ _id: req.body.id });
+  ManifestApi.getManifest(
+    sprint.urn,
+    {},
+    oAuth2TwoLegged,
+    await oAuth2TwoLegged.authenticate()
+  ).then(
+    (buckets) => {
+      console.log(buckets.body);
+      return res.json({
+        status: buckets.body.status,
+        progress: buckets.body.progress,
+      });
+    },
+    function (err) {
+      console.error(err);
+    }
+  );
+});
 
 module.exports = router;
