@@ -67,7 +67,7 @@ router.get("/tkn/p/:crypt", async (req, res) => {
 //get token+spr
 router.get("/tkn/s/:id", async (req, res) => {
   try {
-    let spr = await Sprint.findOne({ _id: req.body.id });
+    let spr = await Sprint.findOne({ _id: req.params.id });
     if (!spr) {
       return res.status(404).json({ err: "Спринт не найден" });
     }
