@@ -141,8 +141,8 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
 });
 
 //check manifest status prj
-router.get("/status/p", async (req, res) => {
-  let project = await Project.findOne({ crypt: req.body.crypt });
+router.get("/status/p/:crypt", async (req, res) => {
+  let project = await Project.findOne({ crypt: req.params.crypt });
   // return res.json(project.urn)
   ManifestApi.getManifest(
     project.urn,
@@ -226,8 +226,8 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
 });
 
 //check manifest status spr
-router.get("/status/s", async (req, res) => {
-  let sprint = await Sprint.findOne({ _id: req.body.id });
+router.get("/status/s/:id", async (req, res) => {
+  let sprint = await Sprint.findOne({ _id: req.params.id });
   ManifestApi.getManifest(
     sprint.urn,
     {},
