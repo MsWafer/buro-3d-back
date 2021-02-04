@@ -17,4 +17,3 @@ app.use("/up",require("./routes/modelder"))
 const PORT = process.env.PORT || 7770;
 
 app.listen(PORT, () => console.log(`Server started on ${PORT}`));
-

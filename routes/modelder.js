@@ -45,6 +45,27 @@ var oAuth2TwoLegged = new ForgeSDK.AuthClientTwoLegged(
   true
 );
 
+// router.get('/a',async(req,res)=>{
+//     try {
+//         let metadataa;
+//         let a;
+//         await ManifestApi.getMetadata('dXJuOmFkc2sub2JqZWN0czpvcy5vYmplY3Q6emdzazR4b3o0OWFicXdrb2JldG9pbmwyb2hobDRka2xfM2RidXJvX2J1Y2tldC90ZXN0LnJ2dA==',{},oAuth2TwoLegged,await oAuth2TwoLegged.authenticate())
+//         .then((response)=> metadataa = response.body.data.metadata[0].guid)
+        
+//         await ManifestApi.getModelviewProperties("dXJuOmFkc2sub2JqZWN0czpvcy5vYmplY3Q6emdzazR4b3o0OWFicXdrb2JldG9pbmwyb2hobDRka2xfM2RidXJvX2J1Y2tldC90ZXN0LnJ2dA==",
+//         metadataa,{},oAuth2TwoLegged,await oAuth2TwoLegged.authenticate()).then((resa)=> a = resa.body.data.collection)
+//         a.splice(0,1)
+//         let b = a.filter(c => c.properties)
+//         res.json(b.sort((d,e)=>(d.name > e.name)?1:-1))
+
+//     } catch (error) {
+//         console.error(error)
+//         return res.json(error)
+//     }
+  
+// })
+
+
 //get token+prj
 router.get("/tkn/p/:crypt", async (req, res) => {
   try {
@@ -104,7 +125,8 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
           { crypt: req.body.crypt },
           { $set: { urn: urn } }
         );
-        res.json({ msg: "Файл загружен, переводим....." });
+        let prj = await Project.findOne({crypt:req.body.crypt})
+        res.json({ msg: "Файл загружен, переводим.....",project:prj });
         (async () => {
           ManifestApi.translate(
             {
@@ -189,7 +211,8 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
           { _id: req.body.id },
           { $set: { urn: urn } }
         );
-        res.json({ msg: "Файл загружен, переводим....." });
+        let spr = await Sprint.findOne({_id:req.body.id})
+        res.json({ msg: "Файл загружен, переводим.....",sprint:spr });
         (async () => {
           ManifestApi.translate(
             {
