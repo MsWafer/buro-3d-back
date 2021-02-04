@@ -125,7 +125,7 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
           { crypt: req.body.crypt },
           { $set: { urn: urn } }
         );
-        let prj = await Project.findOne({crypt:req.body.crypt}).populate("sprints").team("team")
+        let prj = await Project.findOne({crypt:req.body.crypt}).populate("sprints").populate("team")
         res.json({ msg: "Файл загружен, переводим.....",project:prj });
         (async () => {
           ManifestApi.translate(
