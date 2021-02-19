@@ -38,7 +38,7 @@ const { response } = require("express");
 const { json } = require("body-parser");
 const { resolve } = require("path");
 const { reject } = require("lodash");
-const manauth = require("../../Platform/middleware/manauth");
+const manauth = require("../middleware/manauth");
 
 var FORGE_CLIENT_ID = process.env.FORGE_CLIENT_ID;
 var FORGE_CLIENT_SECRET = process.env.FORGE_CLIENT_SECRET;
