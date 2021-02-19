@@ -14,6 +14,7 @@ const ProjectSchema = new Schema({
     type: String,
     required: true,
   },
+
   about: {
     type: String,
     default: "a",
@@ -24,6 +25,10 @@ const ProjectSchema = new Schema({
   dateFinish: {
     type: Date,
     default: null,
+  },
+  par: {
+    type: String,
+    required: true,
   },
   team: [
     {
@@ -39,9 +44,19 @@ const ProjectSchema = new Schema({
       default: [],
     },
   ],
-  customer: {
-    type: String,
-  },
+  customer: [
+    {
+      email: {
+        type: String,
+      },
+      phone: {
+        type: String,
+      },
+      name: {
+        type: String,
+      },
+    },
+  ],
   city: {
     type: String,
   },
@@ -75,6 +90,43 @@ const ProjectSchema = new Schema({
   mtl: {
     type: String,
   },
+  release: [
+    {
+      version: {
+        type: Number,
+        default: 1,
+      },
+      publicId: {
+        type: String,
+      },
+      urn: {
+        type: String,
+      },
+      approve: {
+        type: String,
+        default: "unapproved",
+      },
+      edits: {
+        type: String,
+      }
+    },
+  ],
+  infoRes: [
+    {
+      description: {
+        type: String,
+      },
+      name: {
+        type: String,
+      },
+      content: {
+        type: String,
+      },
+      type: {
+        type: String,
+      },
+    },
+  ],
 });
 
 module.exports = Project = mongoose.model("project", ProjectSchema);

@@ -1,8 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const path = require("path");
 const upload = multer({
-  dest: "/usr/src/app/public",
+  dest: __dirname + "/../public",
+  filename: (req, file, cb) => {
+    cb(
+      null,
+      file.fieldname + "-" + Date.now() + "-" + path.extname(file.originalname)
+    );
+  },
   fileFilter: (req, file, cb) => {
     if (file.mimetype == "application/octet-stream") {
       cb(null, true);
@@ -21,12 +28,17 @@ String.prototype.toBase64 = function () {
   return new Buffer(this).toString("base64");
 };
 const fs = require("fs");
+const fsp = require("fs").promises;
 const Axios = require("axios");
 
 const Project = require("../models/Project");
 const Sprint = require("../models/Sprint");
+const auth = require("../middleware/auth")
 const { response } = require("express");
 const { json } = require("body-parser");
+const { resolve } = require("path");
+const { reject } = require("lodash");
+const manauth = require("../../Platform/middleware/manauth");
 
 var FORGE_CLIENT_ID = process.env.FORGE_CLIENT_ID;
 var FORGE_CLIENT_SECRET = process.env.FORGE_CLIENT_SECRET;
@@ -133,8 +145,12 @@ router.get("/objtr/:urn", async (req, res) => {
 
 //check obj manifest, if successfull download files to server and save to model
 router.get("/objdl/:urn", async (req, res) => {
-  let proj = await Project.findOne({urn:req.params.urn})
-  if(!proj){return res.status(404).json({msg:'Неверная урна или урна не привязана к проекту'})}
+  let proj = await Project.findOne({ urn: req.params.urn });
+  if (!proj) {
+    return res
+      .status(404)
+      .json({ msg: "Неверная урна или урна не привязана к проекту" });
+  }
   let credentials;
   let children;
   let auf = async () => {
@@ -147,16 +163,21 @@ router.get("/objdl/:urn", async (req, res) => {
     {},
     oAuth2TwoLegged,
     credentials
-  ).then((response) => (children = response.body.derivatives[2].children))
-  .catch((error)=>console.log(error),res.status(500).json({msg:'server error'}));
+  )
+    .then((response) => (children = response.body.derivatives[2].children))
+    .catch((error) => console.log(error));
 
   let mtl = children[children.length - 1];
   let obj = children[children.length - 2];
   let objFile = obj.urn.split("/").filter(Boolean).pop();
-  let mtlFile = mtl.urn.split("/").filter(Boolean).pop();  
+  let mtlFile = mtl.urn.split("/").filter(Boolean).pop();
 
   if (obj.status != "success" || mtl.status != "success") {
-    return res.json({ msg: "Ne gotovo", objStatus : obj.status, mtlStatus : mtl.status });
+    return res.json({
+      msg: "Ne gotovo",
+      objStatus: obj.status,
+      mtlStatus: mtl.status,
+    });
   }
 
   let objDownload = await Axios({
@@ -166,13 +187,6 @@ router.get("/objdl/:urn", async (req, res) => {
       Authorization: "Bearer " + token,
     },
   });
-  fs.writeFile(
-    `${__dirname + "/../public/" + objFile}`,
-    objDownload.data,
-    (err) => {
-      if (err) throw err;
-    }
-  );
   let mtlDownload = await Axios({
     method: "GET",
     url: `https://developer.api.autodesk.com/modelderivative/v2/designdata/${req.params.urn}/manifest/${mtl.urn}`,
@@ -180,19 +194,36 @@ router.get("/objdl/:urn", async (req, res) => {
       Authorization: "Bearer " + token,
     },
   });
-  fs.writeFile(
-    `${__dirname + "/../public/" + mtlFile}`,
-    mtlDownload.data,
-    (err) => {
-      if (err) throw err;
-    }
-  );
+  let obD = new Promise((resolve, reject) => {
+    fsp.writeFile(
+      `${__dirname + "/../public/" + objFile}`,
+      objDownload.data,
+      (err) => {
+        if (err) throw err;
+      }
+    ),
+      resolve(),
+      reject();
+  });
+  let mtD = new Promise((resolve, reject) => {
+    fsp.writeFile(
+      `${__dirname + "/../public/" + mtlFile}`,
+      mtlDownload.data,
+      (err) => {
+        if (err) throw err;
+      }
+    ),
+      resolve(),
+      reject();
+  });
 
-  proj.obj = objFile;
-  proj.mtl = mtlFile;
-  await proj.save()
-
-  res.json({obj:objFile,mtl:mtlFile});
+  Promise.all([obD, mtD])
+    .then(() => {
+      proj.obj = objFile;
+      proj.mtl = mtlFile;
+      proj.save();
+    })
+    .then(() => res.json({ obj: objFile, mtl: mtlFile }));
 });
 
 //create bucket
@@ -258,62 +289,80 @@ router.get("/tkn/s/:id", async (req, res) => {
 
 //post file to project
 router.post("/upload/p", upload.single("file"), async (req, res) => {
-  let urn;
-  fs.readFile(req.file.path, async (err, data) => {
-    objectsApi
-      .uploadObject(
-        BUCKET_KEY,
-        req.file.originalname,
-        data.length,
-        data,
-        {},
-        oAuth2TwoLegged,
-        await oAuth2TwoLegged.authenticate()
-      )
-      .then(async (response) => {
-        console.log(response);
-        urn = response.body.objectId.toBase64();
-        await Project.findOneAndUpdate(
-          { crypt: req.body.crypt },
-          { $set: { urn: urn } }
-        );
-        let prj = await Project.findOne({ crypt: req.body.crypt })
-          .populate("sprints")
-          .populate("team");
-        res.json({ msg: "Файл загружен, переводим.....", project: prj });
-        (async () => {
-          ManifestApi.translate(
-            {
-              input: {
-                urn: urn,
-              },
-              output: {
-                formats: [
-                  {
-                    type: "svf",
-                    views: ["2d", "3d"],
-                  },
-                ],
-              },
-            },
-            {},
-            oAuth2TwoLegged,
-            await oAuth2TwoLegged.authenticate()
-          ).then(
-            (results) => {
-              console.log(results.body);
-            },
-            function (err) {
-              console.error(err);
-            }
+  try {
+    let urn;
+    let credentials;
+    let auf = async () => {
+      return await oAuth2TwoLegged.authenticate();
+    };
+    await auf().then((response) => (credentials = response));
+    fs.readFile(req.file.path, async (err, data) => {
+      console.log(req.file.filename);
+      console.log(req.file.originalname);
+      console.log(req.file);
+      if (err) throw err;
+      objectsApi
+        .uploadObject(
+          BUCKET_KEY,
+          req.file.filename + ".rvt",
+          data.length,
+          data,
+          {},
+          oAuth2TwoLegged,
+          credentials
+        )
+        .then(async (response) => {
+          urn = response.body.objectId.toBase64();
+          await Project.findOneAndUpdate(
+            { crypt: req.body.crypt },
+            { $set: { urn: urn } }
           );
-        })();
-      })
-      .catch((error) => {
-        console.log(error);
-        return res.json({ msg: "НЕ ПОЛУЧИЛОСЬ" });
-      });
-  });
+          let prj = await Project.findOne({ crypt: req.body.crypt })
+            .populate("sprints")
+            .populate("team");
+          res.json({ msg: "Файл загружен, переводим.....", project: prj });
+          (async () => {
+            ManifestApi.translate(
+              {
+                input: {
+                  urn: urn,
+                },
+                output: {
+                  formats: [
+                    {
+                      type: "svf",
+                      views: ["2d", "3d"],
+                    },
+                  ],
+                },
+              },
+              {},
+              oAuth2TwoLegged,
+              credentials
+            ).then(
+              (results) => {
+                console.log(results.body);
+                fs.unlink(req.file.path, (err) => {
+                  if (err) {
+                    throw err;
+                  }
+                });
+              },
+              function (err) {
+                console.error(err);
+              }
+            );
+          })();
+        })
+        .catch((error) => {
+          console.log(error);
+          return res.json({ msg: "НЕ ПОЛУЧИЛОСЬ" });
+        });
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ msg: "govno" });
+  }
 });
 
 //check manifest status prj
@@ -325,7 +374,6 @@ router.get("/status/p/:crypt", async (req, res) => {
   if (!project.urn) {
     return res.json({ progress: "Модель загружается" });
   }
-  // return res.json(project.urn)
   ManifestApi.getManifest(
     project.urn,
     {},
@@ -348,6 +396,11 @@ router.get("/status/p/:crypt", async (req, res) => {
 //post file to sprint
 router.post("/upload/s", upload.single("file"), async (req, res) => {
   let urn;
+  let credentials;
+  let auf = async () => {
+    return await oAuth2TwoLegged.authenticate();
+  };
+  await auf().then((response) => (credentials = response));
   fs.readFile(req.file.path, async (err, data) => {
     res.json();
     objectsApi
@@ -358,7 +411,7 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
         data,
         {},
         oAuth2TwoLegged,
-        await oAuth2TwoLegged.authenticate()
+        credentials
       )
       .then(async (response) => {
         console.log(response);
@@ -390,7 +443,7 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
             },
             {},
             oAuth2TwoLegged,
-            await oAuth2TwoLegged.authenticate()
+            credentials
           ).then(
             (results) => {
               console.log(results.body);
@@ -434,6 +487,172 @@ router.get("/status/s/:id", async (req, res) => {
       console.error(err);
     }
   );
+});
+
+//post release
+router.post("/release/:crypt", upload.single("file"), async (req, res) => {
+  let urn;
+  let credentials;
+  let auf = async () => {
+    return await oAuth2TwoLegged.authenticate();
+  };
+  await auf().then((response) => (credentials = response));
+  fs.readFile(req.file.path, async (err, data) => {
+    objectsApi
+      .uploadObject(
+        BUCKET_KEY,
+        req.file.originalname,
+        data.length,
+        data,
+        {},
+        oAuth2TwoLegged,
+        credentials
+      )
+      .then(async (response) => {
+        console.log(response);
+        urn = response.body.objectId.toBase64();
+        let relObj = { version: 1, urn: urn, approve: "unapproved" };
+        let prj = await Project.findOne({ crypt: req.params.crypt })
+          .populate("sprints")
+          .populate("team", "-password -permission");
+        await prj.release.push(relObj);
+        await prj.save();
+        res.json({ msg: "Файл загружен, переводим.....", project: prj });
+        (async () => {
+          ManifestApi.translate(
+            {
+              input: {
+                urn: urn,
+              },
+              output: {
+                formats: [
+                  {
+                    type: "svf",
+                    views: ["2d", "3d"],
+                  },
+                ],
+              },
+            },
+            {},
+            oAuth2TwoLegged,
+            credentials
+          ).then(
+            (results) => {
+              console.log(results.body);
+            },
+            function (err) {
+              console.error(err);
+            }
+          );
+        })();
+      })
+      .catch((error) => {
+        console.log(error);
+        return res.json({ msg: "НЕ ПОЛУЧИЛОСЬ" });
+      });
+  });
+});
+
+//approve release
+router.put("/release/approve/:crypt", manauth, async (req, res) => {
+  try {
+    let prj = await Project.findOne({ crypt: req.params.crypt });
+    if (!prj) {
+      return res.status(404).json({ err: "Проект не найден" });
+    }
+    let release = await prj.release.filter((rel) => rel._id == req.body.relId);
+    release[0].approve = "approved";
+    release[0].publicId =
+      Date.now().toString(36) + Math.random().toString(36).substr(2, 10);
+    await prj.save();
+    return res.json({ project: prj, msg: "Релиз апрувнут" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "server error" });
+  }
+});
+
+//reject release
+router.put("release/reject/:crypt", manauth, async (req, res) => {
+  try {
+    let prj = await Project.findOne({ crypt: req.params.crypt });
+    if (!prj) {
+      return res.status(404).json({ err: "Проект не найден" });
+    }
+    let release = await prj.release.filter((rel) => rel._id == req.body.relId);
+    release[0].approve = "rejected";
+    release[0].publicId = null;
+    await prj.save();
+    return res.json({ project: prj, msg: "Релиз отвергнут" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ err: "server error" });
+  }
+});
+
+//post edits
+router.put("/release/:crypt", upload.single("file"), async (req, res) => {
+  let urn;
+  let credentials;
+  let auf = async () => {
+    return await oAuth2TwoLegged.authenticate();
+  };
+  await auf().then((response) => (credentials = response));
+  fs.readFile(req.file.path, async (err, data) => {
+    objectsApi
+      .uploadObject(
+        BUCKET_KEY,
+        req.file.originalname,
+        data.length,
+        data,
+        {},
+        oAuth2TwoLegged,
+        credentials
+      )
+      .then(async (response) => {
+        console.log(response);
+        urn = response.body.objectId.toBase64();
+        let prj = await Project.findOne({ crypt: req.params.crypt })
+          .populate("sprints")
+          .populate("team", "-password -permission");
+        let release = prj.filter((rel) => rel._id == req.body.relId);
+        release[0].urn = urn;
+        release[0].approve = "unapproved";
+        await prj.save();
+        res.json({ msg: "Файл загружен, переводим.....", project: prj });
+        (async () => {
+          ManifestApi.translate(
+            {
+              input: {
+                urn: urn,
+              },
+              output: {
+                formats: [
+                  {
+                    type: "svf",
+                    views: ["2d", "3d"],
+                  },
+                ],
+              },
+            },
+            {},
+            oAuth2TwoLegged,
+            credentials
+          ).then(
+            (results) => {
+              console.log(results.body);
+            },
+            function (err) {
+              console.error(err);
+            }
+          );
+        })();
+      })
+      .catch((error) => {
+        console.log(error);
+        return res.json({ msg: "НЕ ПОЛУЧИЛОСЬ" });
+      });
+  });
 });
 
 module.exports = router;
