@@ -13,7 +13,7 @@ const upload = multer({
 });
 const ForgeSDK = require("forge-apis");
 const BucketsApi = new ForgeSDK.BucketsApi();
-const ManifestApi = new ForgeSDK.DerivativesApi(undefined, 'EU');
+const ManifestApi = new ForgeSDK.DerivativesApi(undefined, 'EMEA');
 const objectsApi = new ForgeSDK.ObjectsApi();
 var Buffer = require("buffer").Buffer;
 String.prototype.toBase64 = function () {
@@ -34,7 +34,7 @@ const manauth = require("../middleware/manauth");
 
 var FORGE_CLIENT_ID = process.env.FORGE_CLIENT_ID;
 var FORGE_CLIENT_SECRET = process.env.FORGE_CLIENT_SECRET;
-const BUCKET_KEY = FORGE_CLIENT_ID.toLowerCase() + "_buro_rvt_bucket";
+const BUCKET_KEY = FORGE_CLIENT_ID.toLowerCase() + "_buro_model_bucket";
 process.env.BUCKET_KEY = BUCKET_KEY;
 
 var oAuth2TwoLegged = new ForgeSDK.AuthClientTwoLegged(
@@ -223,10 +223,10 @@ router.post("/bucket", async (req, res) => {
   try {
     BucketsApi.createBucket(
       {
-        bucketKey: FORGE_CLIENT_ID.toLowerCase() + "_buro_rvt_bucket",
+        bucketKey: FORGE_CLIENT_ID.toLowerCase() + "_buro_model_bucket",
         policyKey: "persistent",
       },
-      {},
+      {xAdsRegion:"EMEA"},
       oAuth2TwoLegged,
       await oAuth2TwoLegged.authenticate()
     )
