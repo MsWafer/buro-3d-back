@@ -10,14 +10,6 @@ const upload = multer({
       file.fieldname + "-" + Date.now() + "-" + path.extname(file.originalname)
     );
   },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype == "application/octet-stream") {
-      cb(null, true);
-    } else {
-      cb(null, false);
-      return cb(new Error("Разрешенны только файлы говна"));
-    }
-  },
 });
 const ForgeSDK = require("forge-apis");
 const BucketsApi = new ForgeSDK.BucketsApi();
@@ -42,7 +34,7 @@ const manauth = require("../middleware/manauth");
 
 var FORGE_CLIENT_ID = process.env.FORGE_CLIENT_ID;
 var FORGE_CLIENT_SECRET = process.env.FORGE_CLIENT_SECRET;
-const BUCKET_KEY = FORGE_CLIENT_ID.toLowerCase() + "_3dburo_bucket";
+const BUCKET_KEY = FORGE_CLIENT_ID.toLowerCase() + "_buro_rvt_bucket";
 process.env.BUCKET_KEY = BUCKET_KEY;
 
 var oAuth2TwoLegged = new ForgeSDK.AuthClientTwoLegged(
@@ -240,9 +232,11 @@ router.post("/bucket", async (req, res) => {
     )
       .then((response) => {
         console.log(response);
+        return res.json(response)
       })
       .catch((error) => {
         console.log(error);
+        return res.json(error)
       });
   } catch (error) {
     console.error(error);
