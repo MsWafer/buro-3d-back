@@ -13,7 +13,7 @@ const upload = multer({
 });
 const ForgeSDK = require("forge-apis");
 const BucketsApi = new ForgeSDK.BucketsApi();
-const ManifestApi = new ForgeSDK.DerivativesApi(/*undefined, 'EU'*/);
+const ManifestApi = new ForgeSDK.DerivativesApi(undefined, 'EU');
 const objectsApi = new ForgeSDK.ObjectsApi();
 var Buffer = require("buffer").Buffer;
 String.prototype.toBase64 = function () {
