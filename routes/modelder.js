@@ -294,11 +294,12 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
       console.log(req.file.filename);
       console.log(req.file.originalname);
       console.log(req.file);
+      console.log(path.extname(req.file.originalname))
       if (err) throw err;
       objectsApi
         .uploadObject(
           BUCKET_KEY,
-          req.file.filename + ".rvt",
+          req.file.filename + path.extname(req.file.originalname),
           data.length,
           data,
           {},
