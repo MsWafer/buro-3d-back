@@ -13,7 +13,7 @@ const upload = multer({
 });
 const ForgeSDK = require("forge-apis");
 const BucketsApi = new ForgeSDK.BucketsApi();
-const ManifestApi = new ForgeSDK.DerivativesApi(undefined, 'EMEA');
+const ManifestApi = new ForgeSDK.DerivativesApi(undefined, "EMEA");
 const objectsApi = new ForgeSDK.ObjectsApi();
 var Buffer = require("buffer").Buffer;
 String.prototype.toBase64 = function () {
@@ -25,7 +25,7 @@ const Axios = require("axios");
 
 const Project = require("../models/Project");
 const Sprint = require("../models/Sprint");
-const auth = require("../middleware/auth")
+const auth = require("../middleware/auth");
 const { response } = require("express");
 const { json } = require("body-parser");
 const { resolve } = require("path");
@@ -226,17 +226,17 @@ router.post("/bucket", async (req, res) => {
         bucketKey: FORGE_CLIENT_ID.toLowerCase() + "_buro_model_bucket",
         policyKey: "persistent",
       },
-      {xAdsRegion:"EMEA"},
+      { xAdsRegion: "EMEA" },
       oAuth2TwoLegged,
       await oAuth2TwoLegged.authenticate()
     )
       .then((response) => {
         console.log(response);
-        return res.json(response)
+        return res.json(response);
       })
       .catch((error) => {
         console.log(error);
-        return res.json(error)
+        return res.json(error);
       });
   } catch (error) {
     console.error(error);
@@ -291,10 +291,6 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
     };
     await auf().then((response) => (credentials = response));
     fs.readFile(req.file.path, async (err, data) => {
-      console.log(req.file.filename);
-      console.log(req.file.originalname);
-      console.log(req.file);
-      console.log(path.extname(req.file.originalname))
       if (err) throw err;
       objectsApi
         .uploadObject(
@@ -308,9 +304,11 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
         )
         .then(async (response) => {
           urn = response.body.objectId.toBase64();
+          let nDate = new Date()+(0);
+          date = nDate.toLocaleString("ru-RU", { timeZone: "GMT" });
           await Project.findOneAndUpdate(
             { crypt: req.body.crypt },
-            { $set: { urn: urn } }
+            { $set: { urn: urn, urnDate: date } }
           );
           let prj = await Project.findOne({ crypt: req.body.crypt })
             .populate("sprints")
@@ -397,11 +395,11 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
   };
   await auf().then((response) => (credentials = response));
   fs.readFile(req.file.path, async (err, data) => {
-    res.json();
+    if (err) throw err;
     objectsApi
       .uploadObject(
         BUCKET_KEY,
-        req.file.originalname,
+        req.file.filename + path.extname(req.file.originalname),
         data.length,
         data,
         {},
@@ -409,12 +407,11 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
         credentials
       )
       .then(async (response) => {
-        console.log(response);
         urn = response.body.objectId.toBase64();
-        await Project.findOneAndUpdate(
-          { crypt: req.body.crypt },
-          { $set: { urn: urn } }
-        );
+        // await Project.findOneAndUpdate(
+        //   { crypt: req.body.crypt },
+        //   { $set: { urn: urn } }
+        // );
         await Sprint.findOneAndUpdate(
           { _id: req.body.id },
           { $set: { urn: urn } }
@@ -442,6 +439,11 @@ router.post("/upload/s", upload.single("file"), async (req, res) => {
           ).then(
             (results) => {
               console.log(results.body);
+              fs.unlink(req.file.path, (err) => {
+                if (err) {
+                  throw err;
+                }
+              });
             },
             function (err) {
               console.error(err);

@@ -84,6 +84,9 @@ const ProjectSchema = new Schema({
   urn: {
     type: String,
   },
+  urnDate: {
+    type: Date,
+  },
   obj: {
     type: String,
   },
