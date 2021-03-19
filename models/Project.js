@@ -6,6 +6,9 @@ const ProjectSchema = new Schema({
     type: String,
     required: true,
   },
+  offTitle: {
+    type: String,
+  },
   type: {
     type: String,
     required: true,
@@ -14,10 +17,9 @@ const ProjectSchema = new Schema({
     type: String,
     required: true,
   },
-
   about: {
     type: String,
-    default: "a",
+    default: "",
   },
   dateStart: {
     type: Date,
@@ -28,13 +30,38 @@ const ProjectSchema = new Schema({
   },
   par: {
     type: String,
-    required: true,
+  },
+  cusStorage: {
+    type: String,
+  },
+  schedule: {
+    type: String,
+  },
+  budget: {
+    type: String,
   },
   team: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
       default: [],
+    },
+  ],
+  team2: [
+    {
+      position: {
+        type: String,
+      },
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+      task: {
+        type: String,
+      },
+      fullname: {
+        type: String,
+      },
     },
   ],
   sprints: [
@@ -44,19 +71,28 @@ const ProjectSchema = new Schema({
       default: [],
     },
   ],
-  customer: [
+  customer: { type: String },
+  customerNew: [
     {
-      email: {
-        type: String,
-      },
-      phone: {
-        type: String,
-      },
-      name: {
-        type: String,
-      },
+      name: { type: String },
+      phone: { type: String },
+      email: { type: String },
+      other: { type: Array, default: [] },
     },
   ],
+  // [
+  //   {
+  //     email: {
+  //       type: String,
+  //     },
+  //     phone: {
+  //       type: String,
+  //     },
+  //     name: {
+  //       type: String,
+  //     },
+  //   },
+  // ],
   city: {
     type: String,
   },
@@ -76,11 +112,10 @@ const ProjectSchema = new Schema({
   rocketchat: {
     type: String,
   },
-  tags: [
-    {
-      type: String,
-    },
-  ],
+  tags: {
+    type: Array,
+    default: [],
+  },
   urn: {
     type: String,
   },
@@ -93,6 +128,24 @@ const ProjectSchema = new Schema({
   mtl: {
     type: String,
   },
+  urnNew: [
+    {
+      urn: { type: String },
+      date: { type: Date },
+      title: { type: String },
+      version: { type: Number, default: 1 },
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+      tags: { type: Array, default: [] },
+      old: [
+        {
+          urn: { type: String },
+          date: { type : Date },
+          version: { type: Number },
+          user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+        }
+      ]
+    },
+  ],
   release: [
     {
       version: {
@@ -111,7 +164,10 @@ const ProjectSchema = new Schema({
       },
       edits: {
         type: String,
-      }
+      },
+      date: {
+        type: Date,
+      },
     },
   ],
   infoRes: [
@@ -130,6 +186,13 @@ const ProjectSchema = new Schema({
       },
     },
   ],
+  cover: {
+    type: String,
+    default: "avatars/spurdo.png",
+  },
+  object: {
+    type: String,
+  },
 });
 
 module.exports = Project = mongoose.model("project", ProjectSchema);

@@ -15,9 +15,12 @@ const ForgeSDK = require("forge-apis");
 const BucketsApi = new ForgeSDK.BucketsApi();
 const ManifestApi = new ForgeSDK.DerivativesApi(undefined, "EMEA");
 const objectsApi = new ForgeSDK.ObjectsApi();
-var Buffer = require("buffer").Buffer;
-String.prototype.toBase64 = function () {
-  return new Buffer(this).toString("base64");
+// var Buffer = require("buffer").Buffer;
+// String.prototype.toBase64 = function () {
+//   return new Buffer(this).toString("base64");
+// };
+let encode64 = (string) => {
+  return Buffer.from(string).toString("base64");
 };
 const fs = require("fs");
 const fsp = require("fs").promises;
@@ -115,7 +118,7 @@ router.get("/objtr/:urn", async (req, res) => {
         },
         output: {
           destination: {
-            region: "us",
+            region: "eu",
           },
           formats: [
             {
@@ -250,10 +253,19 @@ router.get("/tkn/p/:crypt", async (req, res) => {
     if (!prj) {
       return res.status(404).json({ err: "Проект не найден" });
     }
+    let urn;
+    if (req.query.title) {
+      urn = prj.urnNew.filter((urn_obj) => urn_obj.title == req.query.title);
+      if (urn.length > 0) {
+        urn = urn[0].urn;
+      }
+    } else {
+      urn = prj.urn;
+    }
     oAuth2TwoLegged.authenticate().then((response) => {
       return res.json({
         token: response.access_token,
-        urn: prj.urn,
+        urn: urn,
       });
     });
   } catch (error) {
@@ -303,23 +315,77 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
           credentials
         )
         .then(async (response) => {
-          urn = response.body.objectId.toBase64();
-          let nDate = new Date()+(0);
-          date = nDate.toLocaleString("ru-RU", { timeZone: "GMT" });
-          await Project.findOneAndUpdate(
-            { crypt: req.body.crypt },
-            { $set: { urn: urn, urnDate: date } }
-          );
+          urn = encode64(response.body.objectId); //response.body.objectId.toBase64();
+          let nDate = new Date() + 0;
+          let date = nDate.toLocaleString("ru-RU", { timeZone: "GMT" });
+          // await Project.findOneAndUpdate(
+          //   { crypt: req.body.crypt },
+          //   { $set: { urn: urn, urnDate: date } }
+          // );
+          console.log(req.body);
           let prj = await Project.findOne({ crypt: req.body.crypt })
             .populate("sprints")
             .populate("team");
-          res.json({ msg: "Файл загружен, переводим.....", project: prj });
+          if (!prj) {
+            return res.status(404).json({ err: "Проект не найден" });
+          }
+          if (!req.body.title) {
+            prj.urn = urn;
+          } else {
+            if (!prj.urnNew || prj.urnNew == null || prj.urnNew == undefined) {
+              prj.urnNew = [];
+            }
+            let check = prj.urnNew.filter(
+              (check_obj) => check_obj.title == req.body.title
+            );
+            if (check.length > 0) {
+              if (!check[0].old) {
+                check[0].old = [];
+              }
+              check[0].old.push({
+                urn: check[0].urn,
+                date: check[0].date,
+                version: check[0].version,
+                user: check[0].user,
+              });
+              check[0].urn = urn;
+              check[0].date = date;
+              check[0].version += 1;
+              check[0].user = req.body.user_id;
+              check[0].tags = req.body.tags;
+            } else {
+              prj.urnNew.push({
+                urn: urn,
+                date: date,
+                title: req.body.title,
+                user: req.body.user_id,
+                tags: req.body.tags,
+              });
+            }
+          }
+
+          await prj.save();
+          res.json({
+            msg: "Файл загружен, переводим.....",
+            project: prj,
+            urn: urn,
+          });
           (async () => {
+            let input_obj;
+            if (path.extname(req.file.originalname) == ".zip") {
+              input_obj = {
+                urn: urn,
+                compressedUrn: true,
+                rootFilename: "main.rvt",
+              };
+            } else {
+              input_obj = {
+                urn: urn,
+              };
+            }
             ManifestApi.translate(
               {
-                input: {
-                  urn: urn,
-                },
+                input: input_obj,
                 output: {
                   formats: [
                     {
@@ -364,11 +430,24 @@ router.get("/status/p/:crypt", async (req, res) => {
   if (!project) {
     return res.json({ err: "Проект не найден" });
   }
-  if (!project.urn) {
-    return res.json({ progress: "Модель загружается" });
+  let urn;
+  console.log(req.query);
+  if (req.query.id) {
+    urn = project.urnNew.filter((urn_obj) => urn_obj._id == req.query.id);
+    if (urn.length > 0) {
+      urn = urn[0].urn;
+    } else {
+      return res.status(404).json({ err: "Неверный тайтл" });
+    }
+  } else {
+    if (!project.urn) {
+      return res.json({ progress: "Модель загружается" });
+    }
+    urn = project.urn;
   }
+
   ManifestApi.getManifest(
-    project.urn,
+    urn,
     {},
     oAuth2TwoLegged,
     await oAuth2TwoLegged.authenticate()
