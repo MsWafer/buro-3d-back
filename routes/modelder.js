@@ -315,6 +315,7 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
           credentials
         )
         .then(async (response) => {
+          console.log("upload",response.body)
           urn = encode64(response.body.objectId); //response.body.objectId.toBase64();
           let nDate = new Date() + 0;
           let date = nDate.toLocaleString("ru-RU", { timeZone: "GMT" });
@@ -322,7 +323,7 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
           //   { crypt: req.body.crypt },
           //   { $set: { urn: urn, urnDate: date } }
           // );
-          console.log(req.body);
+          // console.log(req.body);
           let prj = await Project.findOne({ crypt: req.body.crypt })
             .populate("sprints")
             .populate("team");
@@ -400,7 +401,7 @@ router.post("/upload/p", upload.single("file"), async (req, res) => {
               credentials
             ).then(
               (results) => {
-                console.log(results.body);
+                console.log("translate",results.body);
                 fs.unlink(req.file.path, (err) => {
                   if (err) {
                     throw err;
